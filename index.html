@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <title>Adivinanzas de Figuras</title>
+
+  <!-- PWA / iPhone -->
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Figuras" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+
+  <style>
+    :root {
+      --bg1: #101827;
+      --bg2: #243044;
+      --card: rgba(255,255,255,.10);
+      --card2: rgba(255,255,255,.16);
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --ok: #8be28b;
+      --bad: #ff8f8f;
+      --accent: #facc15;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overscroll-behavior: none;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, #334155 0, transparent 35%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      background-attachment: fixed;
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+
+    .screen {
+      min-height: 100dvh;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
+    }
+
+    .screen.active { display: flex; }
+
+    .menu-card {
+      width: min(920px, 100%);
+      border: 1px solid rgba(255,255,255,.20);
+      background: rgba(15, 23, 42, .78);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      border-radius: 28px;
+      padding: 28px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.38);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 8vw, 56px);
+      letter-spacing: -0.04em;
+      line-height: .98;
+    }
+
+    .subtitle {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: clamp(15px, 4vw, 20px);
+      line-height: 1.45;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin: 20px 0 16px;
+    }
+
+    .mode {
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,.22);
+      color: var(--text);
+      background: var(--card);
+      border-radius: 18px;
+      padding: 18px 12px;
+      font-weight: 800;
+      font-size: 17px;
+      transition: transform .12s ease, background .12s ease, border .12s ease;
+    }
+
+    .mode:active { transform: scale(.96); background: var(--card2); }
+
+    .mode span {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-top: 6px;
+    }
+
+    .memory-tip {
+      margin: 16px 0;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(250, 204, 21, .11);
+      border: 1px solid rgba(250, 204, 21, .28);
+      color: #fff7cc;
+      line-height: 1.45;
+      font-size: 16px;
+    }
+
+    .memory-tip strong { color: #facc15; }
+
+    .training-tip {
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(255,255,255,.18);
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .training-tip h2 { margin: 0 0 8px; color: var(--text); font-size: 22px; }
+
+    .small { color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    #playScreen {
+      padding: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at center, rgba(250,204,21,.13), transparent 28%),
+        linear-gradient(135deg, #020617, #111827);
+    }
+
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: calc(12px + var(--safe-top)) calc(14px + var(--safe-right)) 12px calc(14px + var(--safe-left));
+      background: linear-gradient(to bottom, rgba(0,0,0,.55), transparent);
+    }
+
+    .pill {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      padding: 9px 13px;
+      color: rgba(255,255,255,.9);
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .exit-btn {
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.22);
+      color: #fff;
+      border-radius: 999px;
+      width: 40px; height: 40px;
+      font-size: 20px; font-weight: 900;
+      padding: 0; line-height: 1;
+      display: grid; place-items: center;
+    }
+    .exit-btn:active { background: rgba(255,255,255,.26); }
+
+    .progress-wrap {
+      position: fixed;
+      top: calc(64px + var(--safe-top));
+      left: calc(16px + var(--safe-left));
+      right: calc(16px + var(--safe-right));
+      height: 8px;
+      background: rgba(255,255,255,.14);
+      border-radius: 999px;
+      overflow: hidden;
+      z-index: 5;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #facc15, #fb7185);
+      transition: width .08s linear;
+    }
+
+    .figure-stage {
+      width: 100vw;
+      height: 100dvh;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .figure-emoji {
+      font-size: min(48vw, 42vh);
+      line-height: 1;
+      filter: drop-shadow(0 24px 35px rgba(0,0,0,.38));
+      animation: pop .35s ease both;
+    }
+
+    @keyframes pop {
+      from { transform: scale(.72); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .countdown {
+      font-size: clamp(52px, 26vw, 180px);
+      font-weight: 950;
+      letter-spacing: -0.06em;
+      color: var(--accent);
+      text-shadow: 0 18px 50px rgba(0,0,0,.45);
+    }
+
+    .results {
+      width: min(1100px, 100%);
+      max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 32px);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid rgba(255,255,255,.20);
+      background: rgba(15, 23, 42, .82);
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.38);
+    }
+
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .answer {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .answer label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 7px;
+      font-weight: 800;
+    }
+
+    select {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.25);
+      background: #0f172a;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px 10px;
+      font-size: 16px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: 850;
+      cursor: pointer;
+      flex: 1 1 auto;
+    }
+
+    .primary { background: #facc15; color: #111827; }
+    .primary:active { background: #eab308; }
+
+    .secondary {
+      background: rgba(255,255,255,.13);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.20);
+    }
+    .secondary:active { background: rgba(255,255,255,.22); }
+
+    .score {
+      margin-top: 18px;
+      font-size: clamp(22px, 6vw, 34px);
+      font-weight: 950;
+    }
+
+    .answer-list-box {
+      display: none;
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(255,255,255,.18);
+      font-size: 20px;
+      line-height: 1.7;
+    }
+
+    .answer-list-box.active { display: block; }
+    .answer-list-box h2 { margin: 0 0 10px; font-size: 24px; }
+    .answer-list-box ol { margin: 0; padding-left: 30px; }
+
+    .review {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .review-card {
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+
+    .review-card.correct { border-color: rgba(139,226,139,.65); }
+    .review-card.wrong { border-color: rgba(255,143,143,.65); }
+    .review-card .big { font-size: 34px; margin-bottom: 6px; }
+
+    .correct-text { color: var(--ok); font-weight: 800; }
+    .wrong-text { color: var(--bad); font-weight: 800; }
+
+    @media (max-width: 720px) {
+      .mode-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main id="menuScreen" class="screen active">
+    <section class="menu-card">
+      <h1>Adivinanzas de figuras</h1>
+      <p class="subtitle">
+        Elegí cuántas figuras querés ver. Vas a verlas a pantalla completa, una por una, durante <strong>3 segundos</strong>.
+        Al final tenés que adivinar el orden correcto.
+      </p>
+
+      <div id="menuTip" class="memory-tip"></div>
+
+      <div class="mode-grid">
+        <button class="mode" data-count="4">4 figuras <span>secuencia de 4</span></button>
+        <button class="mode" data-count="5">5 figuras <span>secuencia de 5</span></button>
+        <button class="mode" data-count="6">6 figuras <span>secuencia de 6</span></button>
+        <button class="mode" data-count="7">7 figuras <span>secuencia de 7</span></button>
+        <button class="mode" data-count="8">8 figuras <span>secuencia de 8</span></button>
+        <button class="mode" data-count="9">9 figuras <span>secuencia de 9</span></button>
+        <button class="mode" data-count="10">10 figuras <span>secuencia de 10</span></button>
+        <button class="mode" data-count="11">11 figuras <span>secuencia de 11</span></button>
+        <button class="mode" data-count="12">12 figuras <span>secuencia de 12</span></button>
+        <button class="mode" data-count="13">13 figuras <span>secuencia de 13</span></button>
+        <button class="mode" data-count="14">14 figuras <span>secuencia de 14</span></button>
+        <button class="mode" data-count="15">15 figuras <span>secuencia de 15</span></button>
+        <button class="mode" data-count="16">16 figuras <span>secuencia de 16</span></button>
+        <button class="mode" data-count="17">17 figuras <span>secuencia de 17</span></button>
+      </div>
+
+      <p class="small">
+        Consejo: agregá esta app a la pantalla de inicio para jugarla a pantalla completa, como una app nativa.
+      </p>
+    </section>
+  </main>
+
+  <main id="playScreen" class="screen">
+    <div class="topbar">
+      <button class="exit-btn" id="exitBtn" aria-label="Salir">✕</button>
+      <div class="pill" id="modeLabel">Modo</div>
+      <div class="pill" id="counterLabel">Figura 1/5</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <section class="figure-stage">
+      <div id="figureBox" class="figure-emoji"></div>
+    </section>
+  </main>
+
+  <main id="resultScreen" class="screen">
+    <section class="results">
+      <h1>Adiviná la secuencia</h1>
+      <p class="subtitle">Elegí qué figura apareció en cada posición. Después tocá “Corregir”.</p>
+      <div id="answerGrid" class="answer-grid"></div>
+      <div class="actions">
+        <button id="checkBtn" class="primary">Corregir</button>
+        <button id="showBtn" class="secondary">Mostrar respuesta</button>
+        <button id="newTipBtn" class="secondary">Nuevo consejo</button>
+        <button id="againBtn" class="secondary">Jugar de nuevo</button>
+      </div>
+      <div id="trainingTip" class="training-tip"></div>
+      <div id="scoreBox" class="score"></div>
+      <div id="answerListBox" class="answer-list-box"></div>
+      <div id="reviewBox" class="review"></div>
+    </section>
+  </main>
+
+  <script>
+    const FIGURES = [{"name":"Estrella","emoji":"⭐"},{"name":"Corazón","emoji":"❤️"},{"name":"Luna","emoji":"🌙"},{"name":"Sol","emoji":"☀️"},{"name":"Rayo","emoji":"⚡"},{"name":"Nube","emoji":"☁️"},{"name":"Diamante","emoji":"💎"},{"name":"Flor","emoji":"🌸"},{"name":"Casa","emoji":"🏠"},{"name":"Árbol","emoji":"🌳"},{"name":"Auto","emoji":"🚗"},{"name":"Avión","emoji":"✈️"},{"name":"Pez","emoji":"🐟"},{"name":"Gato","emoji":"🐱"},{"name":"Perro","emoji":"🐶"},{"name":"Pelota","emoji":"⚽"},{"name":"Regalo","emoji":"🎁"},{"name":"Campana","emoji":"🔔"},{"name":"Llave","emoji":"🔑"},{"name":"Corona","emoji":"👑"},{"name":"Manzana","emoji":"🍎"},{"name":"Cohete","emoji":"🚀"},{"name":"Ojo","emoji":"👁️"},{"name":"Paraguas","emoji":"☂️"}];
+    const DURATION = 3000;
+
+    const MEMORY_TIPS = [
+      { title: "Agrupá en bloques", text: "No intentes recordar 12 figuras sueltas. Separalas mentalmente en grupos chicos: 3 + 3 + 3 + 3. Es más fácil recordar bloques que una fila larga." },
+      { title: "Inventá una historia", text: "Convertí la secuencia en una mini historia absurda. Por ejemplo: estrella, gato, llave puede ser “una estrella cae sobre un gato que encuentra una llave”." },
+      { title: "Usá lugares conocidos", text: "Imaginá tu casa y poné una figura en cada lugar: puerta, cocina, cama, ventana. Después recorrés la casa mentalmente para recuperar el orden." },
+      { title: "Exagerá la imagen", text: "Hacé que cada figura sea gigante, ruidosa o rara. Una manzana normal se olvida; una manzana gigante arriba de un auto queda mucho más grabada." },
+      { title: "Uní de a pares", text: "Si aparecen sol, pez, corona, árbol, armá pares: sol-pez y corona-árbol. Después recordás dos escenas en lugar de cuatro objetos." },
+      { title: "Repetí apenas termina", text: "Cuando termina la ronda, antes de mirar opciones, repetí en voz baja lo que recordás. Eso fortalece la recuperación, no solo el reconocimiento." },
+      { title: "Buscá patrones", text: "Separá por categorías: animales, objetos, clima, comida. Los patrones reducen carga mental y ayudan a reconstruir lo que falta." },
+      { title: "No memorices nombres solos", text: "Asociá nombre + imagen + acción. “Perro salta”, “rayo rompe”, “flor crece”. El cerebro recuerda mejor escenas que etiquetas." }
+    ];
+
+    const LEVEL_TIPS = [
+      { max: 5, title: "Técnica recomendada para esta ronda", text: "Para 4 o 5 figuras, usá una historia corta. No hace falta una técnica compleja: conectá cada figura con la siguiente en una sola escena." },
+      { max: 8, title: "Técnica recomendada para esta ronda", text: "Para 6 a 8 figuras, agrupá de a pares. Armá 3 o 4 escenas pequeñas y después recordá el orden de esas escenas." },
+      { max: 12, title: "Técnica recomendada para esta ronda", text: "Para 9 a 12 figuras, usá bloques de 3. Pensá “primer grupo, segundo grupo, tercer grupo”. Cada grupo puede ser una mini historia." },
+      { max: 17, title: "Técnica recomendada para esta ronda", text: "Para 13 a 17 figuras, usá el método de lugares. Poné cada figura en un recorrido conocido: entrada, living, cocina, escalera, habitación, etc." }
+    ];
+
+    let currentTipIndex = 0;
+
+    function getRandomTip() {
+      currentTipIndex = Math.floor(Math.random() * MEMORY_TIPS.length);
+      return MEMORY_TIPS[currentTipIndex];
+    }
+
+    function getLevelTip(count) {
+      return LEVEL_TIPS.find(tip => count <= tip.max) || LEVEL_TIPS[LEVEL_TIPS.length - 1];
+    }
+
+    function renderMenuTip() {
+      const tip = getRandomTip();
+      menuTip.innerHTML = `<strong>Consejo:</strong> ${tip.title}. ${tip.text}`;
+    }
+
+    function renderTrainingTip(count) {
+      const levelTip = getLevelTip(count);
+      const randomTip = MEMORY_TIPS[currentTipIndex] || getRandomTip();
+      trainingTip.innerHTML = `
+        <h2>${levelTip.title}</h2>
+        <p><strong>${levelTip.text}</strong></p>
+        <p>Consejo extra: ${randomTip.text}</p>
+      `;
+    }
+
+    const menuScreen = document.getElementById("menuScreen");
+    const playScreen = document.getElementById("playScreen");
+    const resultScreen = document.getElementById("resultScreen");
+    const figureBox = document.getElementById("figureBox");
+    const counterLabel = document.getElementById("counterLabel");
+    const modeLabel = document.getElementById("modeLabel");
+    const progressBar = document.getElementById("progressBar");
+    const menuTip = document.getElementById("menuTip");
+    const trainingTip = document.getElementById("trainingTip");
+    const answerGrid = document.getElementById("answerGrid");
+    const scoreBox = document.getElementById("scoreBox");
+    const answerListBox = document.getElementById("answerListBox");
+    const reviewBox = document.getElementById("reviewBox");
+
+    let sequence = [];
+    let currentModeCount = 5;
+    let timer = null;
+    let progressTimer = null;
+
+    function showScreen(screen) {
+      [menuScreen, playScreen, resultScreen].forEach(s => s.classList.remove("active"));
+      screen.classList.add("active");
+      window.scrollTo(0, 0);
+    }
+
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function makeSequence(count) {
+      return shuffle(FIGURES).slice(0, count);
+    }
+
+    function modeName(count) {
+      return `${count} figuras`;
+    }
+
+    function startGame(count) {
+      currentModeCount = count;
+      sequence = makeSequence(count);
+      scoreBox.innerHTML = "";
+      if (answerListBox) {
+        answerListBox.innerHTML = "";
+        answerListBox.classList.remove("active");
+      }
+      reviewBox.innerHTML = "";
+      showScreen(playScreen);
+      modeLabel.textContent = modeName(count) + " · 3s";
+      showCountdown(3, () => playSequence(0));
+    }
+
+    function stopTimers() {
+      clearTimeout(timer);
+      clearInterval(progressTimer);
+    }
+
+    function showCountdown(n, callback) {
+      stopTimers();
+      progressBar.style.width = "0%";
+      counterLabel.textContent = "Preparado";
+      figureBox.className = "countdown";
+      figureBox.textContent = n;
+      if (n <= 0) { callback(); return; }
+      timer = setTimeout(() => showCountdown(n - 1, callback), 850);
+    }
+
+    function playSequence(index) {
+      if (index >= sequence.length) { endSequence(); return; }
+      const fig = sequence[index];
+      figureBox.className = "figure-emoji";
+      figureBox.textContent = fig.emoji;
+      counterLabel.textContent = `Figura ${index + 1}/${sequence.length}`;
+      progressBar.style.width = "0%";
+
+      const started = Date.now();
+      clearInterval(progressTimer);
+      progressTimer = setInterval(() => {
+        const elapsed = Date.now() - started;
+        const pct = Math.min(100, (elapsed / DURATION) * 100);
+        progressBar.style.width = pct + "%";
+      }, 50);
+
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        clearInterval(progressTimer);
+        progressBar.style.width = "100%";
+        playSequence(index + 1);
+      }, DURATION);
+    }
+
+    function endSequence() {
+      stopTimers();
+      buildAnswers();
+      renderTrainingTip(currentModeCount);
+      showScreen(resultScreen);
+    }
+
+    function buildAnswers() {
+      answerGrid.innerHTML = "";
+      const options = FIGURES.map(f => `<option value="${f.name}">${f.emoji} ${f.name}</option>`).join("");
+      sequence.forEach((fig, i) => {
+        const div = document.createElement("div");
+        div.className = "answer";
+        div.innerHTML = `
+          <label>Posición ${i + 1}</label>
+          <select data-index="${i}">
+            <option value="">Elegí una figura</option>
+            ${options}
+          </select>
+        `;
+        answerGrid.appendChild(div);
+      });
+    }
+
+    function showAnswerList() {
+      const items = sequence
+        .map((fig, i) => `<li><strong>${i + 1}.</strong> ${fig.emoji} ${fig.name}</li>`)
+        .join("");
+      answerListBox.innerHTML = `<h2>Respuesta correcta</h2><ol>${items}</ol>`;
+      answerListBox.classList.add("active");
+      answerListBox.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function checkAnswers(showAnswer = false) {
+      const selects = [...document.querySelectorAll("select[data-index]")];
+      let correct = 0;
+      reviewBox.innerHTML = "";
+      selects.forEach((select, i) => {
+        const expected = sequence[i];
+        const guessed = select.value;
+        const ok = guessed === expected.name;
+        if (ok) correct++;
+        const card = document.createElement("div");
+        card.className = "review-card " + (ok ? "correct" : "wrong");
+        if (showAnswer) select.value = expected.name;
+        card.innerHTML = `
+          <div class="big">${expected.emoji}</div>
+          <div><strong>Posición ${i + 1}</strong></div>
+          <div>Respuesta: ${expected.name}</div>
+          <div>Tu elección: ${guessed || "sin responder"}</div>
+          <div class="${ok ? "correct-text" : "wrong-text"}">${ok ? "Correcto" : "Incorrecto"}</div>
+        `;
+        reviewBox.appendChild(card);
+      });
+      const percent = Math.round((correct / sequence.length) * 100);
+      scoreBox.textContent = `Puntaje: ${correct}/${sequence.length} (${percent}%)`;
+    }
+
+    function goToMenu() {
+      stopTimers();
+      renderMenuTip();
+      showScreen(menuScreen);
+    }
+
+    renderMenuTip();
+
+    document.querySelectorAll(".mode").forEach(btn => {
+      btn.addEventListener("click", () => startGame(Number(btn.dataset.count)));
+    });
+
+    document.getElementById("checkBtn").addEventListener("click", () => checkAnswers(false));
+    document.getElementById("showBtn").addEventListener("click", () => showAnswerList());
+    document.getElementById("newTipBtn").addEventListener("click", () => {
+      getRandomTip();
+      renderTrainingTip(currentModeCount);
+    });
+    document.getElementById("againBtn").addEventListener("click", goToMenu);
+    document.getElementById("exitBtn").addEventListener("click", goToMenu);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") goToMenu();
+    });
+
+    // Service worker para funcionar sin internet (solo en https / pantalla de inicio)
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
